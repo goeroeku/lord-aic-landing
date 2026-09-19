@@ -1,0 +1,91 @@
+---
+import '../styles/global.css';
+
+const title = 'Lord AiC | Playful AI Playground';
+const description =
+  'A playful landing page for Lord AiC, a tiny corner of the internet for cheerful experiments, creative tech, and useful nonsense.';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href="https://aic.my.id/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lord AiC" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content="https://aic.my.id/" />
+    <meta property="og:image" content="https://aic.my.id/assets/lord-aic-hero.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="https://aic.my.id/assets/lord-aic-hero.png" />
+  </head>
+  <body>
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-media" aria-hidden="true"></div>
+        <div class="hero-overlay"></div>
+        <nav class="topbar" aria-label="Primary navigation">
+          <a class="brand" href="/">Lord AiC</a>
+          <a class="nav-link" href="#playground">Enter the playground</a>
+        </nav>
+        <div class="hero-content">
+          <p class="eyebrow">tiny internet kingdom, highly unserious division</p>
+          <h1 id="hero-title">Lord AiC</h1>
+          <p class="lead">
+            A cheerful landing page for experiments, creative tech, and ideas that arrived wearing sunglasses.
+          </p>
+          <div class="hero-actions" aria-label="Main actions">
+            <a class="button primary" href="#playground">Start the fun</a>
+            <a class="button secondary" href="https://webtech.aic.my.id/" target="_blank" rel="noopener noreferrer">
+              Visit WebTech
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="intro-band" id="playground" aria-label="Playful highlights">
+        <div class="section-inner">
+          <p class="section-kicker">Current status</p>
+          <h2>Mostly useful. Occasionally dramatic. Always online.</h2>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="feature-number">01</span>
+              <h3>Idea Lab</h3>
+              <p>Small experiments, odd concepts, and things that might become useful after one more cup of focus.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-number">02</span>
+              <h3>WebTech Portal</h3>
+              <p>A friendly doorway to learning materials, labs, and interactive code practice.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-number">03</span>
+              <h3>Certified Fun</h3>
+              <p>No certificate included. The confidence is self-issued and laminated by pure imagination.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="quote-band" aria-label="Lord AiC motto">
+        <div class="section-inner quote-layout">
+          <p class="big-quote">Build tiny things. Laugh at tiny bugs. Ship anyway.</p>
+          <a class="button dark" href="https://webtech.aic.my.id/" target="_blank" rel="noopener noreferrer">
+            Open WebTech Interaktif
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Copyright 2026 Lord AiC. Powered by curiosity and questionable keyboard posture.</p>
+    </footer>
+  </body>
+</html>
