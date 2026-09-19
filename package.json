@@ -1,10 +1,11 @@
 {
-  "name": "aic-landing",
+  "name": "lord-aic-landing",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "astro dev --host 127.0.0.1",
+    "check": "astro check",
     "build": "astro build",
     "preview": "astro preview --host 127.0.0.1"
   },

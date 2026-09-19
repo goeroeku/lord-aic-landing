@@ -1,0 +1,156 @@
+name: Test & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    concurrency:
+      group: deploy-cloudflare
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Ensure Cloudflare Pages project exists
+        run: |
+          npx --yes wrangler@4.132.0 pages project create lord-aic-landing --production-branch=main || true
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Ensure DNS record exists
+        run: |
+          node --input-type=module <<'NODE'
+          const token = process.env.CLOUDFLARE_API_TOKEN;
+          const zoneName = 'aic.my.id';
+          const recordName = 'aic.my.id';
+          const recordContent = 'lord-aic-landing.pages.dev';
+          const headers = {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          };
+
+          async function cloudflare(method, url, body) {
+            const response = await fetch(url, {
+              method,
+              headers,
+              body: body ? JSON.stringify(body) : undefined,
+            });
+            const data = await response.json();
+            if (!response.ok || data.success === false) {
+              const detail = data.errors?.map((error) => `${error.code}: ${error.message}`).join('; ') ?? response.statusText;
+              throw new Error(`${method} ${url} failed: ${detail}`);
+            }
+            return data;
+          }
+
+          const zones = await cloudflare('GET', `https://api.cloudflare.com/client/v4/zones?name=${encodeURIComponent(zoneName)}`);
+          const zoneId = zones.result?.[0]?.id;
+
+          if (!zoneId) {
+            console.warn(`Cloudflare zone ${zoneName} was not found by this API token. Add CNAME ${recordName} -> ${recordContent} in Cloudflare DNS, or grant this token Zone Read and DNS Edit for ${zoneName}.`);
+            process.exit(0);
+          }
+
+          const recordsUrl = `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`;
+          const allRecords = await cloudflare('GET', `${recordsUrl}?name=${encodeURIComponent(recordName)}`);
+          const cname = allRecords.result?.find((record) => record.type === 'CNAME');
+          const conflicts = allRecords.result?.filter((record) => ['A', 'AAAA'].includes(record.type)) ?? [];
+          const desired = {
+            type: 'CNAME',
+            name: recordName,
+            content: recordContent,
+            ttl: 1,
+            proxied: true,
+          };
+
+          if (conflicts.length > 0 && !cname) {
+            const detail = conflicts.map((record) => `${record.type} ${record.content}`).join(', ');
+            throw new Error(`${recordName} already has conflicting apex records: ${detail}. Remove or replace them before adding the Pages CNAME.`);
+          }
+
+          if (cname) {
+            await cloudflare('PUT', `${recordsUrl}/${cname.id}`, desired);
+            console.log(`${recordName} DNS record has been updated.`);
+          } else {
+            await cloudflare('POST', recordsUrl, desired);
+            console.log(`${recordName} DNS record has been created.`);
+          }
+          NODE
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Ensure custom domain exists
+        run: |
+          node --input-type=module <<'NODE'
+          const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token = process.env.CLOUDFLARE_API_TOKEN;
+          const projectName = 'lord-aic-landing';
+          const domainName = 'aic.my.id';
+          const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}/domains`;
+          const headers = {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          };
+
+          async function cloudflare(method, url, body) {
+            const response = await fetch(url, {
+              method,
+              headers,
+              body: body ? JSON.stringify(body) : undefined,
+            });
+            const data = await response.json();
+            if (!response.ok || data.success === false) {
+              const detail = data.errors?.map((error) => `${error.code}: ${error.message}`).join('; ') ?? response.statusText;
+              throw new Error(`${method} ${url} failed: ${detail}`);
+            }
+            return data;
+          }
+
+          const domains = await cloudflare('GET', baseUrl);
+          const exists = domains.result?.some((domain) => domain.name === domainName);
+
+          if (exists) {
+            console.log(`${domainName} is already connected.`);
+          } else {
+            await cloudflare('POST', baseUrl, { name: domainName });
+            console.log(`${domainName} has been connected.`);
+          }
+          NODE
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          wranglerVersion: 4.132.0
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=lord-aic-landing --branch=main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
